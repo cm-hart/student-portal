@@ -37,6 +37,14 @@ const {
 
 const PORT = process.env.PORT || 3001;
 
+// Additional debugging after destructuring
+console.log("🔍 After destructuring:", {
+  hasApiKey: !!AIRTABLE_API_KEY,
+  apiKeyPrefix: AIRTABLE_API_KEY?.substring(0, 4),
+  hasBaseId: !!AIRTABLE_BASE_ID,
+  baseIdPrefix: AIRTABLE_BASE_ID?.substring(0, 3)
+});
+
 if (!PORTAL_PW_SECRET) {
   throw new Error("PORTAL_PW_SECRET is not set. Add it to your .env");
 }
@@ -74,12 +82,20 @@ let STUDENTS = {}; // keyed by Preferred Name
 async function loadStudentsFromAirtable() {
   const TABLE = "Students"; // change if your base uses a different name
 
+  // Debug logging
+  console.log('🔍 loadStudentsFromAirtable - AIRTABLE_API_KEY exists:', !!AIRTABLE_API_KEY);
+  console.log('🔍 loadStudentsFromAirtable - AIRTABLE_API_KEY starts with:', AIRTABLE_API_KEY?.substring(0, 4));
+  console.log('🔍 loadStudentsFromAirtable - AIRTABLE_BASE_ID:', AIRTABLE_BASE_ID);
+
   const params = new URLSearchParams();
   if (AIRTABLE_STUDENTS_VIEW) params.set("view", AIRTABLE_STUDENTS_VIEW);
 
   const url = `https://api.airtable.com/v0/${AIRTABLE_BASE_ID}/${encodeURIComponent(
     TABLE
   )}?${params.toString()}`;
+
+  console.log('🔍 Request URL:', url);
+  console.log('🔍 Auth header will be:', `Bearer ${AIRTABLE_API_KEY?.substring(0, 10)}...`);
 
   const resp = await fetch(url, {
     headers: {
@@ -90,6 +106,7 @@ async function loadStudentsFromAirtable() {
 
   if (!resp.ok) {
     const text = await resp.text();
+    console.error('❌ Airtable error response:', text);
     throw new Error(`Students fetch failed: ${resp.status} ${text}`);
   }
 
