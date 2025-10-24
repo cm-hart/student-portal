@@ -8,6 +8,15 @@ const cors = require("cors");
 const rateLimit = require("express-rate-limit");
 require("dotenv").config();
 
+console.log("ENV sanity:", {
+  baseIdPrefix: (process.env.AIRTABLE_BASE_ID || "").slice(0,3), // expect 'app'
+  keyKind:
+    (process.env.AIRTABLE_API_KEY || "").startsWith("pat") ? "pat" :
+    (process.env.AIRTABLE_API_KEY || "").startsWith("key") ? "legacy" :
+    "missing/other",
+  hasKey: !!process.env.AIRTABLE_API_KEY
+});
+
 // If you're on Node < 18, uncomment the next 2 lines:
 // const fetch = (...args) =>
 //   import("node-fetch").then((m) => m.default(...args));
