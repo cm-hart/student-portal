@@ -137,17 +137,21 @@ async function loadStudentsFromAirtable() {
 const app = express();
 
 // CORS (open in dev; allowlist in prod)
+console.log('🔍 ALLOWED_ORIGINS:', ALLOWED_ORIGINS);
 if (ALLOWED_ORIGINS) {
   const allowed = ALLOWED_ORIGINS.split(",").map((s) => s.trim());
+  console.log('🔍 Allowed origins array:', allowed);
   app.use(
     cors({
       origin: (origin, cb) => {
+        console.log('🔍 CORS check - Request origin:', origin, 'Allowed?', !origin || allowed.includes(origin));
         if (!origin || allowed.includes(origin)) return cb(null, true);
         return cb(new Error("CORS: origin not allowed"));
       },
     })
   );
 } else {
+  console.log('⚠️ ALLOWED_ORIGINS not set - allowing all origins');
   app.use(cors()); // dev-friendly; tighten before prod
 }
 
