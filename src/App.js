@@ -193,7 +193,7 @@ function LoginScreen({ onLogin, loading, error }) {
               onChange={(e) => setPreferredName(e.target.value)}
               onKeyPress={handleKeyPress}
               className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-              placeholder="Tamara"
+              placeholder="Your Name"
             />
           </div>
 
