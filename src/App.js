@@ -18,18 +18,18 @@ const API_BASE_URL = "http://localhost:3001/api";
 
 // =============================================
 // DATE FORMATTER
-// =============================================
-function formatDateOnly(yyyyMmDd) {
-  if (!yyyyMmDd) return "";
-  const [y, m, d] = yyyyMmDd.split("-").map(Number);
-  const dt = new Date(y, m - 1, d); // Local date — avoids UTC shift
-  return dt.toLocaleDateString("en-US", {
-    weekday: "short",
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-  });
-}
+// // =============================================
+// function formatDateOnly(yyyyMmDd) {
+//   if (!yyyyMmDd) return "";
+//   const [y, m, d] = yyyyMmDd.split("-").map(Number);
+//   const dt = new Date(y, m - 1, d); // Local date — avoids UTC shift
+//   return dt.toLocaleDateString("en-US", {
+//     weekday: "short",
+//     month: "short",
+//     day: "numeric",
+//     year: "numeric",
+//   });
+// }
 
 // =============================================
 // MAIN APP COMPONENT
@@ -570,31 +570,31 @@ function StatCard({ label, value, icon: Icon, color }) {
 // =============================================
 // STATUS BADGE COMPONENT
 // =============================================
-function StatusBadge({ status }) {
-  if (!status) return <span className="text-gray-400 text-xs">-</span>;
+// function StatusBadge({ status }) {
+//   if (!status) return <span className="text-gray-400 text-xs">-</span>;
 
-  let displayText = status;
-  let colorClass = "bg-gray-100 text-gray-800";
+//   let displayText = status;
+//   let colorClass = "bg-gray-100 text-gray-800";
 
-  if (status === "On Time") {
-    displayText = "On Time";
-    colorClass = "bg-green-100 text-green-800";
-  } else if (status.includes("Tardy")) {
-    displayText = "Tardy";
-    colorClass = "bg-yellow-100 text-yellow-800";
-  } else if (status.includes("Absent")) {
-    displayText = "Absent";
-    colorClass = "bg-red-100 text-red-800";
-  }
+//   if (status === "On Time") {
+//     displayText = "On Time";
+//     colorClass = "bg-green-100 text-green-800";
+//   } else if (status.includes("Tardy")) {
+//     displayText = "Tardy";
+//     colorClass = "bg-yellow-100 text-yellow-800";
+//   } else if (status.includes("Absent")) {
+//     displayText = "Absent";
+//     colorClass = "bg-red-100 text-red-800";
+//   }
 
-  return (
-    <span
-      className={`inline-flex px-2 py-1 rounded-full text-xs font-semibold ${colorClass}`}
-    >
-      {displayText}
-    </span>
-  );
-}
+//   return (
+//     <span
+//       className={`inline-flex px-2 py-1 rounded-full text-xs font-semibold ${colorClass}`}
+//     >
+//       {displayText}
+//     </span>
+//   );
+// }
 
 export default StudentPortal;
 // Also add this for backwards compatibility
