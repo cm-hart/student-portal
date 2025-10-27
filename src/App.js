@@ -353,7 +353,7 @@ function Dashboard({ student, records, onLogout, loading }) {
               <p className="font-semibold">{zoneStatus.message}</p>
               <p className="text-sm mt-1">
                 {zoneStatus.zone === "red"
-                  ? "Please speak with your instructor immediately."
+                  ? "Please speak with the Student Success Coordinator as soon as possible."
                   : "You are approaching the absence limit. Please improve your attendance."}
               </p>
             </div>
