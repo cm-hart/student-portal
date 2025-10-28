@@ -9,12 +9,13 @@ const rateLimit = require("express-rate-limit");
 require("dotenv").config();
 
 console.log("ENV sanity:", {
-  baseIdPrefix: (process.env.AIRTABLE_BASE_ID || "").slice(0,3), // expect 'app'
-  keyKind:
-    (process.env.AIRTABLE_API_KEY || "").startsWith("pat") ? "pat" :
-    (process.env.AIRTABLE_API_KEY || "").startsWith("key") ? "legacy" :
-    "missing/other",
-  hasKey: !!process.env.AIRTABLE_API_KEY
+  baseIdPrefix: (process.env.AIRTABLE_BASE_ID || "").slice(0, 3), // expect 'app'
+  keyKind: (process.env.AIRTABLE_API_KEY || "").startsWith("pat")
+    ? "pat"
+    : (process.env.AIRTABLE_API_KEY || "").startsWith("key")
+    ? "legacy"
+    : "missing/other",
+  hasKey: !!process.env.AIRTABLE_API_KEY,
 });
 
 // If you're on Node < 18, uncomment the next 2 lines:
@@ -31,7 +32,7 @@ const {
   AIRTABLE_BASE_ID,
   AIRTABLE_STUDENTS_VIEW = "", // optional view for Students
   AIRTABLE_ATTENDANCE_TABLE = "Attendance",
-  AIRTABLE_ATTENDANCE_VIEW = "Grid view",
+  // AIRTABLE_ATTENDANCE_VIEW = "",
   ALLOWED_ORIGINS, // comma-separated list (optional)
 } = process.env;
 
@@ -42,14 +43,16 @@ console.log("🔍 After destructuring:", {
   hasApiKey: !!AIRTABLE_API_KEY,
   apiKeyPrefix: AIRTABLE_API_KEY?.substring(0, 4),
   hasBaseId: !!AIRTABLE_BASE_ID,
-  baseIdPrefix: AIRTABLE_BASE_ID?.substring(0, 3)
+  baseIdPrefix: AIRTABLE_BASE_ID?.substring(0, 3),
 });
 
 if (!PORTAL_PW_SECRET) {
   throw new Error("PORTAL_PW_SECRET is not set. Add it to your .env");
 }
 if (!AIRTABLE_API_KEY || !AIRTABLE_BASE_ID) {
-  console.warn("⚠️ AIRTABLE_API_KEY or AIRTABLE_BASE_ID missing; Airtable calls will fail.");
+  console.warn(
+    "⚠️ AIRTABLE_API_KEY or AIRTABLE_BASE_ID missing; Airtable calls will fail."
+  );
 }
 
 // -------------------------
@@ -83,9 +86,18 @@ async function loadStudentsFromAirtable() {
   const TABLE = "Students"; // change if your base uses a different name
 
   // Debug logging
-  console.log('🔍 loadStudentsFromAirtable - AIRTABLE_API_KEY exists:', !!AIRTABLE_API_KEY);
-  console.log('🔍 loadStudentsFromAirtable - AIRTABLE_API_KEY starts with:', AIRTABLE_API_KEY?.substring(0, 4));
-  console.log('🔍 loadStudentsFromAirtable - AIRTABLE_BASE_ID:', AIRTABLE_BASE_ID);
+  console.log(
+    "🔍 loadStudentsFromAirtable - AIRTABLE_API_KEY exists:",
+    !!AIRTABLE_API_KEY
+  );
+  console.log(
+    "🔍 loadStudentsFromAirtable - AIRTABLE_API_KEY starts with:",
+    AIRTABLE_API_KEY?.substring(0, 4)
+  );
+  console.log(
+    "🔍 loadStudentsFromAirtable - AIRTABLE_BASE_ID:",
+    AIRTABLE_BASE_ID
+  );
 
   const params = new URLSearchParams();
   if (AIRTABLE_STUDENTS_VIEW) params.set("view", AIRTABLE_STUDENTS_VIEW);
@@ -94,8 +106,11 @@ async function loadStudentsFromAirtable() {
     TABLE
   )}?${params.toString()}`;
 
-  console.log('🔍 Request URL:', url);
-  console.log('🔍 Auth header will be:', `Bearer ${AIRTABLE_API_KEY?.substring(0, 10)}...`);
+  console.log("🔍 Request URL:", url);
+  console.log(
+    "🔍 Auth header will be:",
+    `Bearer ${AIRTABLE_API_KEY?.substring(0, 10)}...`
+  );
 
   const resp = await fetch(url, {
     headers: {
@@ -106,7 +121,7 @@ async function loadStudentsFromAirtable() {
 
   if (!resp.ok) {
     const text = await resp.text();
-    console.error('❌ Airtable error response:', text);
+    console.error("❌ Airtable error response:", text);
     throw new Error(`Students fetch failed: ${resp.status} ${text}`);
   }
 
@@ -128,7 +143,9 @@ async function loadStudentsFromAirtable() {
   }
 
   STUDENTS = next;
-  console.log(`✅ Loaded ${Object.keys(STUDENTS).length} students from Airtable`);
+  console.log(
+    `✅ Loaded ${Object.keys(STUDENTS).length} students from Airtable`
+  );
 }
 
 // -------------------------
@@ -137,21 +154,26 @@ async function loadStudentsFromAirtable() {
 const app = express();
 
 // CORS (open in dev; allowlist in prod)
-console.log('🔍 ALLOWED_ORIGINS:', ALLOWED_ORIGINS);
+console.log("🔍 ALLOWED_ORIGINS:", ALLOWED_ORIGINS);
 if (ALLOWED_ORIGINS) {
   const allowed = ALLOWED_ORIGINS.split(",").map((s) => s.trim());
-  console.log('🔍 Allowed origins array:', allowed);
+  console.log("🔍 Allowed origins array:", allowed);
   app.use(
     cors({
       origin: (origin, cb) => {
-        console.log('🔍 CORS check - Request origin:', origin, 'Allowed?', !origin || allowed.includes(origin));
+        console.log(
+          "🔍 CORS check - Request origin:",
+          origin,
+          "Allowed?",
+          !origin || allowed.includes(origin)
+        );
         if (!origin || allowed.includes(origin)) return cb(null, true);
         return cb(new Error("CORS: origin not allowed"));
       },
     })
   );
 } else {
-  console.log('⚠️ ALLOWED_ORIGINS not set - allowing all origins');
+  console.log("⚠️ ALLOWED_ORIGINS not set - allowing all origins");
   app.use(cors()); // dev-friendly; tighten before prod
 }
 
@@ -231,10 +253,8 @@ app.get("/api/attendance/:preferredName", async (req, res) => {
     );
     if (!student) return res.status(404).json({ error: "Student not found" });
 
-    // Filter: match student and on/after Sep 8, 2025
     const BASE_ID = AIRTABLE_BASE_ID;
-    const TABLE_NAME = AIRTABLE_ATTENDANCE_TABLE; // table, not view
-    const VIEW_NAME = AIRTABLE_ATTENDANCE_VIEW; // optional
+    const TABLE_NAME = AIRTABLE_ATTENDANCE_TABLE;
 
     const safeName = student.preferredName.replace(/'/g, "\\'");
     const filterFormula = `AND(
@@ -242,34 +262,54 @@ app.get("/api/attendance/:preferredName", async (req, res) => {
       IS_AFTER({Date}, '2025-09-07')
     )`;
 
-    const params = new URLSearchParams();
-    params.set("filterByFormula", filterFormula);
-    params.set("sort[0][field]", "Date");
-    params.set("sort[0][direction]", "desc");
-    if (VIEW_NAME) params.set("view", VIEW_NAME);
+    let allRecords = [];
+    let offset = null;
+    let pageNum = 0;
 
-    const url = `https://api.airtable.com/v0/${BASE_ID}/${encodeURIComponent(
-      TABLE_NAME
-    )}?${params.toString()}`;
+    do {
+      pageNum++;
+      const params = new URLSearchParams();
+      params.set("filterByFormula", filterFormula);
+      params.set("sort[0][field]", "Date");
+      params.set("sort[0][direction]", "desc");
+      if (offset) params.set("offset", offset);
 
-    const response = await fetch(url, {
-      headers: {
-        Authorization: `Bearer ${AIRTABLE_API_KEY}`,
-        Accept: "application/json",
-      },
-    });
+      const url = `https://api.airtable.com/v0/${BASE_ID}/${encodeURIComponent(
+        TABLE_NAME
+      )}?${params.toString()}`;
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error("Airtable error:", response.status, errorText);
-      return res
-        .status(response.status)
-        .json({ error: "Failed to fetch from Airtable", details: errorText });
-    }
+      console.log(`\n=== PAGE ${pageNum} REQUEST ===`);
+      console.log('Using offset:', offset || 'none (first page)');
 
-    const data = await response.json();
+      const response = await fetch(url, {
+        headers: {
+          Authorization: `Bearer ${AIRTABLE_API_KEY}`,
+          Accept: "application/json",
+        },
+      });
 
-    const records = (data.records || []).map((record) => ({
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error("Airtable error:", response.status, errorText);
+        return res
+          .status(response.status)
+          .json({ error: "Failed to fetch from Airtable", details: errorText });
+      }
+
+      const data = await response.json();
+      console.log(`Page ${pageNum} returned ${data.records?.length || 0} records`);
+      console.log(`Has offset for next page:`, !!data.offset);
+      
+      allRecords = allRecords.concat(data.records || []);
+      offset = data.offset;
+    } while (offset);
+
+    console.log(`\n=== PAGINATION COMPLETE ===`);
+    console.log(`Total records fetched: ${allRecords.length}`);
+    console.log('First 3 dates:', allRecords.slice(0, 3).map(r => r.fields?.Date));
+    console.log('Last 3 dates:', allRecords.slice(-3).map(r => r.fields?.Date));
+
+    const records = allRecords.map((record) => ({
       id: record.id,
       date: record.fields?.Date || null,
       course: record.fields?.["Current Course (from Student)"] || null,
