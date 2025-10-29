@@ -396,6 +396,10 @@ function Dashboard({ student, records, onLogout, loading }) {
             <p className="text-sm text-gray-600 mt-1">
               Use this chart to understand your current attendance standing.
             </p>
+            <p className="text-sm text-gray-600 mt-1">
+              You are marked tardy if you arrive between 1 and 19 minutes late.
+              You are maked absnet if you arrive more than 20 minutes late.
+            </p>
           </div>
 
           <table className="w-full border-collapse">
