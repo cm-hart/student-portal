@@ -398,7 +398,9 @@ function Dashboard({ student, records, onLogout, loading }) {
             </p>
             <p className="text-sm text-gray-600 mt-1">
               You are marked tardy if you arrive between 1 and 19 minutes late.
-              You are maked absnet if you arrive more than 20 minutes late.
+            </p>
+            <p className="text-sm text-gray-600 mt-1">
+              You are maked absent if you arrive more than 20 minutes late.
             </p>
           </div>
 
