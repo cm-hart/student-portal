@@ -69,7 +69,7 @@ function StudentPortal() {
 
       // Fetch attendance records after successful login
       await fetchAttendanceRecords(data.student.preferredName);
-      console.log(data, "data first API")
+      // console.log(data, "data first API")
     } catch (err) {
       setError(err.message || "Login failed. Please try again.");
       console.error(err);
@@ -94,7 +94,7 @@ function StudentPortal() {
       if (!response.ok) {
         throw new Error(data.error || "Failed to fetch attendance");
       }
-      console.log(data, "data")
+      // console.log(data, "data")
       setAttendanceRecords(data.records);
     } catch (err) {
       setError("Could not load attendance records.");

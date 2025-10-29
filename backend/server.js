@@ -8,15 +8,15 @@ const cors = require("cors");
 const rateLimit = require("express-rate-limit");
 require("dotenv").config();
 
-console.log("ENV sanity:", {
-  baseIdPrefix: (process.env.AIRTABLE_BASE_ID || "").slice(0, 3), // expect 'app'
-  keyKind: (process.env.AIRTABLE_API_KEY || "").startsWith("pat")
-    ? "pat"
-    : (process.env.AIRTABLE_API_KEY || "").startsWith("key")
-    ? "legacy"
-    : "missing/other",
-  hasKey: !!process.env.AIRTABLE_API_KEY,
-});
+// console.log("ENV sanity:", {
+//   baseIdPrefix: (process.env.AIRTABLE_BASE_ID || "").slice(0, 3), // expect 'app'
+//   keyKind: (process.env.AIRTABLE_API_KEY || "").startsWith("pat")
+//     ? "pat"
+//     : (process.env.AIRTABLE_API_KEY || "").startsWith("key")
+//     ? "legacy"
+//     : "missing/other",
+//   hasKey: !!process.env.AIRTABLE_API_KEY,
+// });
 
 // If you're on Node < 18, uncomment the next 2 lines:
 // const fetch = (...args) =>
@@ -39,12 +39,12 @@ const {
 const PORT = process.env.PORT || 3001;
 
 // Additional debugging after destructuring
-console.log("🔍 After destructuring:", {
-  hasApiKey: !!AIRTABLE_API_KEY,
-  apiKeyPrefix: AIRTABLE_API_KEY?.substring(0, 4),
-  hasBaseId: !!AIRTABLE_BASE_ID,
-  baseIdPrefix: AIRTABLE_BASE_ID?.substring(0, 3),
-});
+// console.log("🔍 After destructuring:", {
+//   hasApiKey: !!AIRTABLE_API_KEY,
+//   apiKeyPrefix: AIRTABLE_API_KEY?.substring(0, 4),
+//   hasBaseId: !!AIRTABLE_BASE_ID,
+//   baseIdPrefix: AIRTABLE_BASE_ID?.substring(0, 3),
+// });
 
 if (!PORTAL_PW_SECRET) {
   throw new Error("PORTAL_PW_SECRET is not set. Add it to your .env");
@@ -86,18 +86,18 @@ async function loadStudentsFromAirtable() {
   const TABLE = "Students"; // change if your base uses a different name
 
   // Debug logging
-  console.log(
-    "🔍 loadStudentsFromAirtable - AIRTABLE_API_KEY exists:",
-    !!AIRTABLE_API_KEY
-  );
-  console.log(
-    "🔍 loadStudentsFromAirtable - AIRTABLE_API_KEY starts with:",
-    AIRTABLE_API_KEY?.substring(0, 4)
-  );
-  console.log(
-    "🔍 loadStudentsFromAirtable - AIRTABLE_BASE_ID:",
-    AIRTABLE_BASE_ID
-  );
+  // console.log(
+  //   "🔍 loadStudentsFromAirtable - AIRTABLE_API_KEY exists:",
+  //   !!AIRTABLE_API_KEY
+  // );
+  // console.log(
+  //   "🔍 loadStudentsFromAirtable - AIRTABLE_API_KEY starts with:",
+  //   AIRTABLE_API_KEY?.substring(0, 4)
+  // );
+  // console.log(
+  //   "🔍 loadStudentsFromAirtable - AIRTABLE_BASE_ID:",
+  //   AIRTABLE_BASE_ID
+  // );
 
   const params = new URLSearchParams();
   if (AIRTABLE_STUDENTS_VIEW) params.set("view", AIRTABLE_STUDENTS_VIEW);
@@ -106,11 +106,11 @@ async function loadStudentsFromAirtable() {
     TABLE
   )}?${params.toString()}`;
 
-  console.log("🔍 Request URL:", url);
-  console.log(
-    "🔍 Auth header will be:",
-    `Bearer ${AIRTABLE_API_KEY?.substring(0, 10)}...`
-  );
+  // console.log("🔍 Request URL:", url);
+  // console.log(
+  //   "🔍 Auth header will be:",
+  //   `Bearer ${AIRTABLE_API_KEY?.substring(0, 10)}...`
+  // );
 
   const resp = await fetch(url, {
     headers: {
@@ -143,9 +143,9 @@ async function loadStudentsFromAirtable() {
   }
 
   STUDENTS = next;
-  console.log(
-    `✅ Loaded ${Object.keys(STUDENTS).length} students from Airtable`
-  );
+  // console.log(
+  //   `✅ Loaded ${Object.keys(STUDENTS).length} students from Airtable`
+  // );
 }
 
 // -------------------------
@@ -154,26 +154,26 @@ async function loadStudentsFromAirtable() {
 const app = express();
 
 // CORS (open in dev; allowlist in prod)
-console.log("🔍 ALLOWED_ORIGINS:", ALLOWED_ORIGINS);
+// console.log("🔍 ALLOWED_ORIGINS:", ALLOWED_ORIGINS);
 if (ALLOWED_ORIGINS) {
   const allowed = ALLOWED_ORIGINS.split(",").map((s) => s.trim());
-  console.log("🔍 Allowed origins array:", allowed);
+  // console.log("🔍 Allowed origins array:", allowed);
   app.use(
     cors({
       origin: (origin, cb) => {
-        console.log(
-          "🔍 CORS check - Request origin:",
-          origin,
-          "Allowed?",
-          !origin || allowed.includes(origin)
-        );
+        // console.log(
+        //   "🔍 CORS check - Request origin:",
+        //   origin,
+        //   "Allowed?",
+        //   !origin || allowed.includes(origin)
+        // );
         if (!origin || allowed.includes(origin)) return cb(null, true);
         return cb(new Error("CORS: origin not allowed"));
       },
     })
   );
 } else {
-  console.log("⚠️ ALLOWED_ORIGINS not set - allowing all origins");
+  // console.log("⚠️ ALLOWED_ORIGINS not set - allowing all origins");
   app.use(cors()); // dev-friendly; tighten before prod
 }
 
@@ -211,9 +211,9 @@ app.post("/api/login", loginLimiter, async (req, res) => {
 
     // Master override
     if (MASTER_PORTAL_PW && password === MASTER_PORTAL_PW) {
-      console.log(
-        `[STAFF OVERRIDE] ${preferredName} at ${new Date().toISOString()}`
-      );
+      // console.log(
+      //   `[STAFF OVERRIDE] ${preferredName} at ${new Date().toISOString()}`
+      // );
       return res.json({
         success: true,
         staffOverride: true,
@@ -278,8 +278,8 @@ app.get("/api/attendance/:preferredName", async (req, res) => {
         TABLE_NAME
       )}?${params.toString()}`;
 
-      console.log(`\n=== PAGE ${pageNum} REQUEST ===`);
-      console.log('Using offset:', offset || 'none (first page)');
+      // console.log(`\n=== PAGE ${pageNum} REQUEST ===`);
+      // console.log('Using offset:', offset || 'none (first page)');
 
       const response = await fetch(url, {
         headers: {
@@ -297,17 +297,17 @@ app.get("/api/attendance/:preferredName", async (req, res) => {
       }
 
       const data = await response.json();
-      console.log(`Page ${pageNum} returned ${data.records?.length || 0} records`);
-      console.log(`Has offset for next page:`, !!data.offset);
+      // console.log(`Page ${pageNum} returned ${data.records?.length || 0} records`);
+      // console.log(`Has offset for next page:`, !!data.offset);
       
       allRecords = allRecords.concat(data.records || []);
       offset = data.offset;
     } while (offset);
 
-    console.log(`\n=== PAGINATION COMPLETE ===`);
-    console.log(`Total records fetched: ${allRecords.length}`);
-    console.log('First 3 dates:', allRecords.slice(0, 3).map(r => r.fields?.Date));
-    console.log('Last 3 dates:', allRecords.slice(-3).map(r => r.fields?.Date));
+    // console.log(`\n=== PAGINATION COMPLETE ===`);
+    // console.log(`Total records fetched: ${allRecords.length}`);
+    // console.log('First 3 dates:', allRecords.slice(0, 3).map(r => r.fields?.Date));
+    // console.log('Last 3 dates:', allRecords.slice(-3).map(r => r.fields?.Date));
 
     const records = allRecords.map((record) => ({
       id: record.id,
