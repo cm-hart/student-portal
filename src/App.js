@@ -178,7 +178,7 @@ function LoginScreen({ onLogin, loading, error }) {
             <User className="w-8 h-8 text-indigo-600" />
           </div>
           <h1 className="text-3xl font-bold text-gray-800 mb-2">
-            Student Portal
+            Student Attendance Checker
           </h1>
           <p className="text-gray-600">Sign in to view your attendance</p>
         </div>
