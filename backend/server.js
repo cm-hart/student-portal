@@ -257,9 +257,26 @@ app.get("/api/attendance/:preferredName", async (req, res) => {
     const TABLE_NAME = AIRTABLE_ATTENDANCE_TABLE;
 
     const safeName = student.preferredName.replace(/'/g, "\\'");
+    
+    // Build filter formula with conditional date logic
     const filterFormula = `AND(
       {PreferredNameText}='${safeName}',
-      IS_AFTER({Date}, '2025-09-07')
+      OR(
+        AND(
+          OR(
+            FIND('TCF', {Current Course (from Student)}),
+            FIND('ITP', {Current Course (from Student)})
+          ),
+          IS_AFTER({Date}, '2025-10-04')
+        ),
+        AND(
+          NOT(OR(
+            FIND('TCF', {Current Course (from Student)}),
+            FIND('ITP', {Current Course (from Student)})
+          )),
+          IS_AFTER({Date}, '2025-09-07')
+        )
+      )
     )`;
 
     let allRecords = [];
@@ -278,9 +295,6 @@ app.get("/api/attendance/:preferredName", async (req, res) => {
         TABLE_NAME
       )}?${params.toString()}`;
 
-      // console.log(`\n=== PAGE ${pageNum} REQUEST ===`);
-      // console.log('Using offset:', offset || 'none (first page)');
-
       const response = await fetch(url, {
         headers: {
           Authorization: `Bearer ${AIRTABLE_API_KEY}`,
@@ -297,17 +311,9 @@ app.get("/api/attendance/:preferredName", async (req, res) => {
       }
 
       const data = await response.json();
-      // console.log(`Page ${pageNum} returned ${data.records?.length || 0} records`);
-      // console.log(`Has offset for next page:`, !!data.offset);
-      
       allRecords = allRecords.concat(data.records || []);
       offset = data.offset;
     } while (offset);
-
-    // console.log(`\n=== PAGINATION COMPLETE ===`);
-    // console.log(`Total records fetched: ${allRecords.length}`);
-    // console.log('First 3 dates:', allRecords.slice(0, 3).map(r => r.fields?.Date));
-    // console.log('Last 3 dates:', allRecords.slice(-3).map(r => r.fields?.Date));
 
     const records = allRecords.map((record) => ({
       id: record.id,
