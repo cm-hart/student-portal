@@ -37,15 +37,16 @@ const API_BASE_URL =
 // =============================================
 function StudentPortal() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [userType, setUserType] = useState(null); // "student" or "teacher"
   const [currentStudent, setCurrentStudent] = useState(null);
   const [attendanceRecords, setAttendanceRecords] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
   // =============================================
-  // LOGIN HANDLER - Calls backend API
+  // STUDENT LOGIN HANDLER
   // =============================================
-  const handleLogin = async (preferredName, password) => {
+  const handleStudentLogin = async (preferredName, password) => {
     setLoading(true);
     setError("");
 
@@ -65,13 +66,45 @@ function StudentPortal() {
       }
 
       setCurrentStudent(data.student);
+      setUserType("student");
       setIsLoggedIn(true);
 
       // Fetch attendance records after successful login
       await fetchAttendanceRecords(data.student.preferredName);
-      // console.log(data, "data first API")
     } catch (err) {
       setError(err.message || "Login failed. Please try again.");
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // =============================================
+  // TEACHER LOGIN HANDLER
+  // =============================================
+  const handleTeacherLogin = async (password) => {
+    setLoading(true);
+    setError("");
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/teacher/login`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ password }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || "Login failed");
+      }
+
+      setUserType("teacher");
+      setIsLoggedIn(true);
+    } catch (err) {
+      setError(err.message || "Invalid teacher password.");
       console.error(err);
     } finally {
       setLoading(false);
@@ -94,7 +127,6 @@ function StudentPortal() {
       if (!response.ok) {
         throw new Error(data.error || "Failed to fetch attendance");
       }
-      // console.log(data, "data")
       setAttendanceRecords(data.records);
     } catch (err) {
       setError("Could not load attendance records.");
@@ -131,6 +163,7 @@ function StudentPortal() {
   // =============================================
   const handleLogout = () => {
     setIsLoggedIn(false);
+    setUserType(null);
     setCurrentStudent(null);
     setAttendanceRecords([]);
     setError("");
@@ -138,30 +171,47 @@ function StudentPortal() {
 
   if (!isLoggedIn) {
     return (
-      <LoginScreen onLogin={handleLogin} loading={loading} error={error} />
+      <LoginScreen
+        onStudentLogin={handleStudentLogin}
+        onTeacherLogin={handleTeacherLogin}
+        loading={loading}
+        error={error}
+        setError={setError}
+      />
     );
   }
 
-  return (
-    <Dashboard
-      student={currentStudent}
-      records={attendanceRecords}
-      onLogout={handleLogout}
-      loading={loading}
-    />
-  );
+  if (userType === "student") {
+    return (
+      <StudentDashboard
+        student={currentStudent}
+        records={attendanceRecords}
+        onLogout={handleLogout}
+        loading={loading}
+      />
+    );
+  }
+
+  if (userType === "teacher") {
+    return <TeacherDashboard onLogout={handleLogout} />;
+  }
 }
 
 // =============================================
-// LOGIN SCREEN COMPONENT
+// LOGIN SCREEN COMPONENT (Updated)
 // =============================================
-function LoginScreen({ onLogin, loading, error }) {
+function LoginScreen({ onStudentLogin, onTeacherLogin, loading, error, setError }) {
+  const [loginMode, setLoginMode] = useState("student"); // "student" or "teacher"
   const [preferredName, setPreferredName] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
 
   const handleSubmit = () => {
-    onLogin(preferredName, password);
+    if (loginMode === "student") {
+      onStudentLogin(preferredName, password);
+    } else {
+      onTeacherLogin(password);
+    }
   };
 
   const handleKeyPress = (e) => {
@@ -178,52 +228,113 @@ function LoginScreen({ onLogin, loading, error }) {
             <User className="w-8 h-8 text-indigo-600" />
           </div>
           <h1 className="text-3xl font-bold text-gray-800 mb-2">
-            Student Attendance Checker
+            Attendance Portal
           </h1>
-          <p className="text-gray-600">Sign in to view your attendance</p>
+          <p className="text-gray-600">Sign in to continue</p>
+        </div>
+
+        {/* Login Mode Tabs */}
+        <div className="flex gap-2 mb-6 bg-gray-100 p-1 rounded-lg">
+          <button
+            onClick={() => {
+              setLoginMode("student");
+              setError?.("");
+            }}
+            className={`flex-1 py-2 px-4 rounded-md font-medium transition-colors ${
+              loginMode === "student"
+                ? "bg-white text-indigo-600 shadow-sm"
+                : "text-gray-600 hover:text-gray-800"
+            }`}
+          >
+            Student
+          </button>
+          <button
+            onClick={() => {
+              setLoginMode("teacher");
+              setError?.("");
+            }}
+            className={`flex-1 py-2 px-4 rounded-md font-medium transition-colors ${
+              loginMode === "teacher"
+                ? "bg-white text-indigo-600 shadow-sm"
+                : "text-gray-600 hover:text-gray-800"
+            }`}
+          >
+            Teacher
+          </button>
         </div>
 
         <div className="space-y-6">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Preferred Name
-            </label>
-            <input
-              type="text"
-              value={preferredName}
-              onChange={(e) => setPreferredName(e.target.value)}
-              onKeyPress={handleKeyPress}
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-              placeholder="Your Name"
-            />
-          </div>
+          {loginMode === "student" ? (
+            <>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Preferred Name
+                </label>
+                <input
+                  type="text"
+                  value={preferredName}
+                  onChange={(e) => setPreferredName(e.target.value)}
+                  onKeyPress={handleKeyPress}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                  placeholder="Your Name"
+                />
+              </div>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Password
-            </label>
-            <div className="relative">
-              <input
-                type={showPassword ? "text" : "password"}
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                onKeyPress={handleKeyPress}
-                className="w-full px-4 py-3 pr-12 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-                placeholder="••••••••"
-              />
-              <button
-                type="button"
-                onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
-              >
-                {showPassword ? (
-                  <EyeOff className="w-5 h-5" />
-                ) : (
-                  <Eye className="w-5 h-5" />
-                )}
-              </button>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Password
+                </label>
+                <div className="relative">
+                  <input
+                    type={showPassword ? "text" : "password"}
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    onKeyPress={handleKeyPress}
+                    className="w-full px-4 py-3 pr-12 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                    placeholder="••••••••"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                  >
+                    {showPassword ? (
+                      <EyeOff className="w-5 h-5" />
+                    ) : (
+                      <Eye className="w-5 h-5" />
+                    )}
+                  </button>
+                </div>
+              </div>
+            </>
+          ) : (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Master Password
+              </label>
+              <div className="relative">
+                <input
+                  type={showPassword ? "text" : "password"}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  onKeyPress={handleKeyPress}
+                  className="w-full px-4 py-3 pr-12 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                  placeholder="••••••••"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                >
+                  {showPassword ? (
+                    <EyeOff className="w-5 h-5" />
+                  ) : (
+                    <Eye className="w-5 h-5" />
+                  )}
+                </button>
+              </div>
             </div>
-          </div>
+          )}
 
           {error && (
             <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">
@@ -239,19 +350,15 @@ function LoginScreen({ onLogin, loading, error }) {
             {loading ? "Signing in..." : "Sign In"}
           </button>
         </div>
-
-        {/* <div className="mt-6 text-center text-sm text-gray-600">
-          <p>Try: Tamara / password123</p>
-        </div> */}
       </div>
     </div>
   );
 }
 
 // =============================================
-// DASHBOARD COMPONENT
+// STUDENT DASHBOARD COMPONENT (Renamed)
 // =============================================
-function Dashboard({ student, records, onLogout, loading }) {
+function StudentDashboard({ student, records, onLogout, loading }) {
   // Calculate attendance statistics across all blocks
   const calculateStats = () => {
     let totalBlocks = 0;
@@ -542,6 +649,208 @@ function Dashboard({ student, records, onLogout, loading }) {
             </div>
           )}
         </div> */}
+      </main>
+    </div>
+  );
+}
+
+// =============================================
+// TEACHER DASHBOARD COMPONENT
+// =============================================
+function TeacherDashboard({ onLogout }) {
+  const [classes, setClasses] = useState([]);
+  const [selectedClass, setSelectedClass] = useState(null);
+  const [students, setStudents] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  // Fetch classes on mount
+  React.useEffect(() => {
+    const fetchClasses = async () => {
+      setLoading(true);
+      setError("");
+      try {
+        const response = await fetch(`${API_BASE_URL}/teacher/classes`);
+        const data = await response.json();
+        if (!response.ok) {
+          throw new Error(data.error || "Failed to fetch classes");
+        }
+        setClasses(data.classes || []);
+        // Don't auto-select the first class - let user choose
+        setSelectedClass(null);
+      } catch (err) {
+        setError(err.message);
+        console.error(err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchClasses();
+  }, []);
+
+  // Fetch students for selected class
+  React.useEffect(() => {
+    if (!selectedClass) return;
+
+    const fetchClassData = async () => {
+      setLoading(true);
+      setError("");
+      try {
+        const response = await fetch(
+          `${API_BASE_URL}/teacher/class/${encodeURIComponent(selectedClass)}`
+        );
+        const data = await response.json();
+        if (!response.ok) {
+          throw new Error(data.error || "Failed to fetch class data");
+        }
+        setStudents(data.students || []);
+      } catch (err) {
+        setError(err.message);
+        console.error(err);
+        setStudents([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchClassData();
+  }, [selectedClass]);
+
+  return (
+    <div className="min-h-screen bg-gray-50">
+      {/* Header */}
+      <header className="bg-white shadow-sm border-b border-gray-200">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-2xl font-bold text-gray-800">
+                Teacher Attendance Report
+              </h1>
+              <p className="text-sm text-gray-600 mt-1">
+                View attendance summary for your classes
+              </p>
+            </div>
+            <button
+              onClick={onLogout}
+              className="flex items-center space-x-2 px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+            >
+              <LogOut className="w-4 h-4" />
+              <span>Logout</span>
+            </button>
+          </div>
+        </div>
+      </header>
+
+      {/* Main Content */}
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Class Selector */}
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-6">
+          <label className="block text-sm font-medium text-gray-700 mb-3">
+            Select Class
+          </label>
+          {loading && !selectedClass ? (
+            <p className="text-gray-600">Loading classes...</p>
+          ) : classes.length === 0 ? (
+            <p className="text-gray-600">No classes available</p>
+          ) : (
+            <select
+              value={selectedClass || ""}
+              onChange={(e) => setSelectedClass(e.target.value)}
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+            >
+              <option value="">Choose a course</option>
+              {classes.map((cls) => (
+                <option key={cls} value={cls}>
+                  {cls}
+                </option>
+              ))}
+            </select>
+          )}
+        </div>
+
+        {/* Error Message */}
+        {error && (
+          <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm mb-6">
+            {error}
+          </div>
+        )}
+
+        {/* Attendance Table */}
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200">
+          <div className="px-6 py-4 border-b border-gray-200">
+            <h3 className="text-lg font-semibold text-gray-800">
+              Student Attendance Summary
+            </h3>
+            <p className="text-sm text-gray-600 mt-1">
+              {selectedClass && `Class: ${selectedClass}`}
+            </p>
+          </div>
+
+          {loading && selectedClass ? (
+            <div className="p-8 text-center text-gray-500">
+              Loading attendance data...
+            </div>
+          ) : students.length === 0 ? (
+            <div className="p-8 text-center text-gray-500">
+              No students found for this class.
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">
+                      Student Name
+                    </th>
+                    <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">
+                      Absences
+                    </th>
+                    <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">
+                      Tardies
+                    </th>
+                    <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">
+                      Total Blocks
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-200">
+                  {students.map((student, idx) => (
+                    <tr key={idx} className="hover:bg-gray-50">
+                      <td className="px-6 py-4 text-sm text-gray-900">
+                        {student.preferredName}
+                      </td>
+                      <td className="px-6 py-4">
+                        <span
+                          className={`inline-flex px-3 py-1 rounded-full text-sm font-semibold ${
+                            student.absences > 0
+                              ? "bg-red-200 text-red-900"
+                              : "bg-green-100 text-green-800"
+                          }`}
+                        >
+                          {student.absences}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4">
+                        <span
+                          className={`inline-flex px-3 py-1 rounded-full text-sm font-semibold ${
+                            student.tardies > 0
+                              ? "bg-yellow-200 text-yellow-900"
+                              : "bg-green-100 text-green-800"
+                          }`}
+                        >
+                          {student.tardies}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 text-sm text-gray-600">
+                        {student.totalBlocks}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
       </main>
     </div>
   );

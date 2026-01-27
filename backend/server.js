@@ -258,44 +258,23 @@ app.get("/api/attendance/:preferredName", async (req, res) => {
 
     const safeName = student.preferredName.replace(/'/g, "\\'");
     
-    // Build filter formula with conditional date logic
-    const filterFormula = `AND(
-      {PreferredNameText}='${safeName}',
-      OR(
-        AND(
-          OR(
-            FIND('TCF', {Current Course (from Student)}),
-            FIND('ITP', {Current Course (from Student)})
-          ),
-          IS_AFTER({Date}, '2025-10-04')
-        ),
-        AND(
-          NOT(OR(
-            FIND('TCF', {Current Course (from Student)}),
-            FIND('ITP', {Current Course (from Student)})
-          )),
-          IS_AFTER({Date}, '2025-09-07')
-        )
-      )
-    )`;
+    // Use 2026-01-12 as the course start date (filter out data before course started)
+    const courseStartDate = new Date('2026-01-12');
 
     let allRecords = [];
     let offset = null;
-    let pageNum = 0;
 
     do {
-      pageNum++;
       const params = new URLSearchParams();
-      params.set("filterByFormula", filterFormula);
+      params.set("filterByFormula", `{PreferredNameText}='${safeName}'`);
       params.set("sort[0][field]", "Date");
       params.set("sort[0][direction]", "desc");
       if (offset) params.set("offset", offset);
 
-      const url = `https://api.airtable.com/v0/${BASE_ID}/${encodeURIComponent(
-        TABLE_NAME
-      )}?${params.toString()}`;
-
-      const response = await fetch(url, {
+      const response = await fetch(
+        `https://api.airtable.com/v0/${BASE_ID}/${encodeURIComponent(
+          TABLE_NAME
+        )}?${params.toString()}`,
         headers: {
           Authorization: `Bearer ${AIRTABLE_API_KEY}`,
           Accept: "application/json",
@@ -315,23 +294,278 @@ app.get("/api/attendance/:preferredName", async (req, res) => {
       offset = data.offset;
     } while (offset);
 
-    const records = allRecords.map((record) => ({
-      id: record.id,
-      date: record.fields?.Date || null,
-      course: record.fields?.["Current Course (from Student)"] || null,
-      blockA: record.fields?.["Block A"] ?? null,
-      blockB: record.fields?.["Block B"] ?? null,
-      blockC: record.fields?.["Block C"] ?? null,
-      blockD: record.fields?.["Block D"] ?? null,
-    }));
+    // Filter records to only include those on or after 2026-01-12
+    const records = allRecords
+      .filter((record) => {
+        const recordDate = record.fields?.Date;
+        if (!recordDate) return false;
+        const date = new Date(recordDate);
+        return date >= courseStartDate;
+      })
+      .map((record) => ({
+        id: record.id,
+        date: record.fields?.Date || null,
+        course: record.fields?.["Current Course (from Student)"] || null,
+        blockA: record.fields?.["Block A"] ?? null,
+        blockB: record.fields?.["Block B"] ?? null,
+        blockC: record.fields?.["Block C"] ?? null,
+        blockD: record.fields?.["Block D"] ?? null,
+      }));
 
     res.json({ success: true, records });
   } catch (error) {
-    console.error("Attendance fetch error:", error);
+    console.error("Attendance fetch error:", error.message);
     res.status(500).json({
       error: "Server error fetching attendance",
       message: error.message,
     });
+  }
+});
+
+// -------------------------
+// TEACHER ROUTES
+// -------------------------
+
+// Teacher login - uses MASTER_PORTAL_PW
+app.post("/api/teacher/login", loginLimiter, async (req, res) => {
+  try {
+    console.log("🔐 Teacher login attempt");
+    console.log("Request body:", req.body);
+    console.log("MASTER_PORTAL_PW set:", !!MASTER_PORTAL_PW);
+    console.log("MASTER_PORTAL_PW value:", MASTER_PORTAL_PW);
+    
+    const { password } = req.body;
+    console.log("Received password:", password);
+    
+    if (!password) {
+      console.log("❌ No password provided");
+      return res.status(400).json({ error: "Password is required" });
+    }
+
+    console.log("Comparing passwords:");
+    console.log("  Received:", password);
+    console.log("  Expected:", MASTER_PORTAL_PW);
+    console.log("  Match:", password === MASTER_PORTAL_PW);
+
+    if (!MASTER_PORTAL_PW || password !== MASTER_PORTAL_PW) {
+      console.log("❌ Invalid password");
+      return res.status(401).json({ error: "Invalid teacher password" });
+    }
+
+    console.log("✅ Teacher login successful");
+    res.json({
+      success: true,
+      userType: "teacher",
+    });
+  } catch (err) {
+    console.error("Teacher login error:", err);
+    res.status(500).json({ error: "Server error during login" });
+  }
+});
+
+// Get list of unique classes
+app.get("/api/teacher/classes", async (req, res) => {
+  try {
+    console.log("📚 Fetching classes from Courses table...");
+    
+    const BASE_ID = AIRTABLE_BASE_ID;
+    const COURSES_TABLE = "Courses";
+
+    const params = new URLSearchParams();
+    // Filter to only 2026 courses
+    params.set("filterByFormula", "FIND('2026', {Name})");
+
+    let allCourses = [];
+    let offset = null;
+
+    do {
+      const pageParams = new URLSearchParams(params);
+      if (offset) pageParams.set("offset", offset);
+
+      const response = await fetch(
+        `https://api.airtable.com/v0/${BASE_ID}/${encodeURIComponent(
+          COURSES_TABLE
+        )}?${pageParams.toString()}`,
+        {
+          headers: {
+            Authorization: `Bearer ${AIRTABLE_API_KEY}`,
+            Accept: "application/json",
+          },
+        }
+      );
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error("Airtable error:", response.status);
+        return res.status(response.status).json({ error: "Failed to fetch classes" });
+      }
+
+      const data = await response.json();
+      
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+
+      (data.records || []).forEach((record) => {
+        const courseName = record.fields?.["Name"];
+        const startDate = record.fields?.["Start Date"];
+        const endDate = record.fields?.["End Date"];
+        
+        if (courseName && typeof courseName === "string" && startDate && endDate) {
+          const courseStart = new Date(startDate);
+          const courseEnd = new Date(endDate);
+          courseEnd.setHours(23, 59, 59, 999);
+          
+          // Only include courses where: today >= start date AND today <= end date
+          if (today >= courseStart && today <= courseEnd) {
+            allCourses.push(courseName);
+          }
+        }
+      });
+
+      offset = data.offset;
+    } while (offset);
+
+    const classes = allCourses.sort();
+    res.json({ success: true, classes });
+  } catch (error) {
+    console.error("Classes fetch error:", error.message);
+    res.status(500).json({ error: "Server error fetching classes" });
+  }
+});
+
+// Get attendance summary for a specific class
+app.get("/api/teacher/class/:className", async (req, res) => {
+  try {
+    const { className } = req.params;
+    
+    const BASE_ID = AIRTABLE_BASE_ID;
+    const TABLE_NAME = AIRTABLE_ATTENDANCE_TABLE;
+
+    // First, get the course record ID and Start Date from the Courses table
+    const courseParams = new URLSearchParams();
+    courseParams.set("filterByFormula", `{Name}='${className.replace(/'/g, "\\'")}'`);
+
+    let courseRecordId = null;
+    let startDate = null;
+
+    const courseResponse = await fetch(
+      `https://api.airtable.com/v0/${BASE_ID}/Courses?${courseParams.toString()}`,
+      {
+        headers: {
+          Authorization: `Bearer ${AIRTABLE_API_KEY}`,
+          Accept: "application/json",
+        },
+      }
+    );
+
+    if (courseResponse.ok) {
+      const courseData = await courseResponse.json();
+      if (courseData.records && courseData.records.length > 0) {
+        courseRecordId = courseData.records[0].id;
+        startDate = courseData.records[0].fields?.["Start Date"];
+      }
+    }
+
+    if (!courseRecordId) {
+      return res.status(404).json({ error: "Course not found" });
+    }
+
+    if (!startDate) {
+      return res.status(400).json({ error: "Course start date not set" });
+    }
+
+    // Now fetch ALL attendance records and filter them manually
+    let allRecords = [];
+    let offset = null;
+
+    do {
+      const params = new URLSearchParams();
+      if (offset) params.set("offset", offset);
+
+      const response = await fetch(
+        `https://api.airtable.com/v0/${BASE_ID}/${encodeURIComponent(
+          TABLE_NAME
+        )}?${params.toString()}`,
+        {
+          headers: {
+            Authorization: `Bearer ${AIRTABLE_API_KEY}`,
+            Accept: "application/json",
+          },
+        }
+      );
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error("Airtable error:", response.status);
+        return res.status(response.status).json({ error: "Failed to fetch class data" });
+      }
+
+      const data = await response.json();
+      allRecords = allRecords.concat(data.records || []);
+      offset = data.offset;
+    } while (offset);
+
+    console.log(`  Total records fetched: ${allRecords.length}`);
+
+    // Filter records where Current Course (from Student) includes our courseRecordId
+    // AND the attendance date is on or after the course start date
+    const startDateObj = new Date(startDate);
+    const courseRecords = allRecords.filter(record => {
+      const courses = record.fields?.["Current Course (from Student)"] || [];
+      const recordDate = record.fields?.["Date"];
+      
+      // Check if this record's course matches AND the date is >= start date
+      const courseMatches = Array.isArray(courses) && courses.includes(courseRecordId);
+      const dateMatches = recordDate ? new Date(recordDate) >= startDateObj : false;
+      
+      return courseMatches && dateMatches;
+    });
+
+    // Now aggregate by student
+    const studentMap = {};
+
+    courseRecords.forEach((record) => {
+      let preferredName = record.fields?.["PreferredNameText"];
+      
+      // Handle if it's an array (take first element)
+      if (Array.isArray(preferredName)) {
+        preferredName = preferredName[0];
+      }
+      
+      if (!preferredName) {
+        return;
+      }
+      
+      if (!studentMap[preferredName]) {
+        studentMap[preferredName] = {
+          preferredName,
+          absences: 0,
+          tardies: 0,
+          totalBlocks: 0,
+        };
+      }
+
+      ["Block A", "Block B", "Block C", "Block D"].forEach((blockName) => {
+        const status = record.fields?.[blockName];
+        if (status) {
+          studentMap[preferredName].totalBlocks++;
+          if (status.includes("Absent")) {
+            studentMap[preferredName].absences++;
+          } else if (status.includes("Tardy")) {
+            studentMap[preferredName].tardies++;
+          }
+        }
+      });
+    });
+
+    const students = Object.values(studentMap)
+      .filter(s => s && s.preferredName && typeof s.preferredName === 'string')
+      .sort((a, b) => a.preferredName.localeCompare(b.preferredName));
+
+    res.json({ success: true, students });
+  } catch (error) {
+    console.error("Class summary error:", error.message);
+    res.status(500).json({ error: "Server error fetching class summary" });
   }
 });
 
