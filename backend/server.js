@@ -275,11 +275,13 @@ app.get("/api/attendance/:preferredName", async (req, res) => {
         `https://api.airtable.com/v0/${BASE_ID}/${encodeURIComponent(
           TABLE_NAME
         )}?${params.toString()}`,
-        headers: {
-          Authorization: `Bearer ${AIRTABLE_API_KEY}`,
-          Accept: "application/json",
-        },
-      });
+        {
+          headers: {
+            Authorization: `Bearer ${AIRTABLE_API_KEY}`,
+            Accept: "application/json",
+          },
+        }
+      );
 
       if (!response.ok) {
         const errorText = await response.text();
