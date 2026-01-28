@@ -1,6 +1,5 @@
 import React, { useState } from "react";
 import {
-  // Calendar,
   LogOut,
   User,
   CheckCircle,
@@ -16,21 +15,6 @@ import {
 // =============================================
 const API_BASE_URL =
   process.env.REACT_APP_API_BASE_URL || "http://localhost:3001/api";
-
-// =============================================
-// DATE FORMATTER
-// // =============================================
-// function formatDateOnly(yyyyMmDd) {
-//   if (!yyyyMmDd) return "";
-//   const [y, m, d] = yyyyMmDd.split("-").map(Number);
-//   const dt = new Date(y, m - 1, d); // Local date — avoids UTC shift
-//   return dt.toLocaleDateString("en-US", {
-//     weekday: "short",
-//     month: "short",
-//     day: "numeric",
-//     year: "numeric",
-//   });
-// }
 
 // =============================================
 // MAIN APP COMPONENT
@@ -198,7 +182,7 @@ function StudentPortal() {
 }
 
 // =============================================
-// LOGIN SCREEN COMPONENT (Updated)
+// LOGIN SCREEN COMPONENT
 // =============================================
 function LoginScreen({ onStudentLogin, onTeacherLogin, loading, error, setError }) {
   const [loginMode, setLoginMode] = useState("student"); // "student" or "teacher"
@@ -356,9 +340,37 @@ function LoginScreen({ onStudentLogin, onTeacherLogin, loading, error, setError 
 }
 
 // =============================================
-// STUDENT DASHBOARD COMPONENT (Renamed)
+// STUDENT DASHBOARD COMPONENT
 // =============================================
 function StudentDashboard({ student, records, onLogout, loading }) {
+  const [studentProfile, setStudentProfile] = useState(null);
+
+  // Fetch student profile data on mount
+  React.useEffect(() => {
+    const fetchProfile = async () => {
+      try {
+        // console.log("🔍 Fetching profile for:", student.preferredName);
+        const response = await fetch(
+          `${API_BASE_URL}/student/profile/${student.preferredName}`
+        );
+        const data = await response.json();
+        // console.log("📦 Profile response:", data);
+        if (response.ok) {
+          setStudentProfile(data.profile);
+          // console.log("✅ Profile set:", data.profile);
+        } else {
+          console.error("❌ Profile fetch failed:", data.error);
+        }
+      } catch (err) {
+        console.error("❌ Failed to fetch student profile:", err);
+      }
+    };
+
+    if (student?.preferredName) {
+      fetchProfile();
+    }
+  }, [student]);
+
   // Calculate attendance statistics across all blocks
   const calculateStats = () => {
     let totalBlocks = 0;
@@ -394,6 +406,35 @@ function StudentDashboard({ student, records, onLogout, loading }) {
 
   const stats = calculateStats();
 
+  // Determine which % missed to show based on current course
+  const getRelevantPercentMissed = () => {
+    // console.log("📊 Getting percent missed, profile:", studentProfile);
+    if (!studentProfile) {
+      // console.log("⚠️ No profile yet");
+      return null;
+    }
+    
+    const course = studentProfile.currentCourse || "";
+    // console.log("🎯 Current course:", course);
+    
+    if (course.includes("Frontend") || course.includes("FE")) {
+      // console.log("✅ Returning FE %:", studentProfile.percentMissedFE);
+      return studentProfile.percentMissedFE;
+    } else if (course.includes("Backend") || course.includes("BE")) {
+      // console.log("✅ Returning BE %:", studentProfile.percentMissedBE);
+      return studentProfile.percentMissedBE;
+    } else if (course.includes("TCF") || course.includes("ITP")) {
+      // console.log("✅ Returning TCF %:", studentProfile.percentMissedTCF);
+      return studentProfile.percentMissedTCF;
+    }
+    
+    // console.log("⚠️ No matching course found");
+    return null;
+  };
+
+  const percentMissed = getRelevantPercentMissed();
+  // console.log("🎯 Final percentMissed value:", percentMissed);
+
   // Determine zone based on absent blocks
   const getZoneStatus = () => {
     if (stats.absentBlocks >= 23) {
@@ -428,9 +469,11 @@ function StudentDashboard({ student, records, onLogout, loading }) {
                 <h2 className="text-lg font-semibold text-gray-800">
                   {student.preferredName}
                 </h2>
-                <p className="text-sm text-gray-600">
-                  {student.course}
-                </p>
+                {studentProfile?.currentCourse && (
+                  <p className="text-sm text-gray-600">
+                    {studentProfile.currentCourse}
+                  </p>
+                )}
               </div>
             </div>
             <button
@@ -468,13 +511,7 @@ function StudentDashboard({ student, records, onLogout, loading }) {
         )}
 
         {/* Statistics Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-           {/*<StatCard
-            label="Attendance Rate"
-            value={`${stats.attendanceRate}%`}
-            icon={Calendar}
-            color="indigo"
-          />*/}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
           <StatCard
             label="On Time Blocks"
             value={stats.onTimeBlocks}
@@ -493,7 +530,16 @@ function StudentDashboard({ student, records, onLogout, loading }) {
             icon={Clock}
             color="yellow"
           />
+          {percentMissed !== null && (
+            <StatCard
+              label="% Missed"
+              value={`${Math.round(percentMissed)}%`}
+              icon={AlertTriangle}
+              color={percentMissed > 7 ? "red" : percentMissed > 4 ? "yellow" : "green"}
+            />
+          )}
         </div>
+
         {/* Attendance Zone Table */}
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-x-auto">
           <div className="px-6 py-4 border-b border-gray-200">
@@ -507,7 +553,7 @@ function StudentDashboard({ student, records, onLogout, loading }) {
               You are marked tardy if you arrive between 1 and 19 minutes late.
             </p>
             <p className="text-sm text-gray-600 mt-1">
-              You are maked absent if you arrive more than 20 minutes late.
+              You are marked absent if you arrive more than 20 minutes late.
             </p>
           </div>
 
@@ -582,73 +628,6 @@ function StudentDashboard({ student, records, onLogout, loading }) {
             </tbody>
           </table>
         </div>
-
-        {/* Attendance Records Table */}
-        {/* <div className="bg-white rounded-xl shadow-sm border border-gray-200">
-          <div className="px-6 py-4 border-b border-gray-200">
-            <h3 className="text-lg font-semibold text-gray-800">
-              Attendance History
-            </h3>
-            <p className="text-sm text-gray-600 mt-1">
-              Each day shows 4 blocks: A, B, C, D
-            </p>
-          </div>
-
-          {loading ? (
-            <div className="p-8 text-center text-gray-500">
-              Loading attendance records...
-            </div>
-          ) : records.length === 0 ? (
-            <div className="p-8 text-center text-gray-500">
-              No attendance records found.
-            </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Date
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Block A
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Block B
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Block C
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Block D
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-200">
-                  {records.map((record) => (
-                    <tr key={record.id} className="hover:bg-gray-50">
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                        {formatDateOnly(record.date)}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <StatusBadge status={record.blockA} />
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <StatusBadge status={record.blockB} />
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <StatusBadge status={record.blockC} />
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <StatusBadge status={record.blockD} />
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </div> */}
       </main>
     </div>
   );
@@ -676,7 +655,6 @@ function TeacherDashboard({ onLogout }) {
           throw new Error(data.error || "Failed to fetch classes");
         }
         setClasses(data.classes || []);
-        // Don't auto-select the first class - let user choose
         setSelectedClass(null);
       } catch (err) {
         setError(err.message);
@@ -884,35 +862,5 @@ function StatCard({ label, value, icon: Icon, color }) {
   );
 }
 
-// =============================================
-// STATUS BADGE COMPONENT
-// =============================================
-// function StatusBadge({ status }) {
-//   if (!status) return <span className="text-gray-400 text-xs">-</span>;
-
-//   let displayText = status;
-//   let colorClass = "bg-gray-100 text-gray-800";
-
-//   if (status === "On Time") {
-//     displayText = "On Time";
-//     colorClass = "bg-green-100 text-green-800";
-//   } else if (status.includes("Tardy")) {
-//     displayText = "Tardy";
-//     colorClass = "bg-yellow-100 text-yellow-800";
-//   } else if (status.includes("Absent")) {
-//     displayText = "Absent";
-//     colorClass = "bg-red-100 text-red-800";
-//   }
-
-//   return (
-//     <span
-//       className={`inline-flex px-2 py-1 rounded-full text-xs font-semibold ${colorClass}`}
-//     >
-//       {displayText}
-//     </span>
-//   );
-// }
-
 export default StudentPortal;
-// Also add this for backwards compatibility
 export { StudentPortal as App };

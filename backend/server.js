@@ -324,6 +324,119 @@ app.get("/api/attendance/:preferredName", async (req, res) => {
   }
 });
 
+//get percentages for each student
+//get percentages for each student
+app.get("/api/student/profile/:preferredName", async (req, res) => {
+  try {
+    const { preferredName } = req.params;
+    // console.log("📊 Fetching profile for:", preferredName);
+    const normalized = preferredName.trim().toLowerCase();
+
+    const student = Object.values(STUDENTS).find(
+      (s) => (s.preferredName || "").trim().toLowerCase() === normalized
+    );
+    if (!student) {
+      // console.log("❌ Student not found in STUDENTS map");
+      return res.status(404).json({ error: "Student not found" });
+    }
+
+    // Fetch full student record from Airtable Students table
+    const params = new URLSearchParams();
+    const safeName = student.preferredName.replace(/'/g, "\\'");
+    params.set("filterByFormula", `{Preferred Name}='${safeName}'`);
+
+    // console.log("🔍 Querying Airtable with formula:", `{Preferred Name}='${safeName}'`);
+
+    const response = await fetch(
+      `https://api.airtable.com/v0/${AIRTABLE_BASE_ID}/Students?${params.toString()}`,
+      {
+        headers: {
+          Authorization: `Bearer ${AIRTABLE_API_KEY}`,
+          Accept: "application/json",
+        },
+      }
+    );
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error("❌ Airtable error:", response.status, errorText);
+      return res.status(response.status).json({ 
+        error: "Failed to fetch student profile" 
+      });
+    }
+
+    const data = await response.json();
+    // console.log("📦 Airtable response records count:", data.records?.length);
+    
+    if (!data.records || data.records.length === 0) {
+      // console.log("❌ No records found for student");
+      return res.status(404).json({ error: "Student profile not found" });
+    }
+
+    const fields = data.records[0].fields;
+    // console.log("📋 Available fields:", Object.keys(fields));
+    
+    // Get the course record ID
+    const courseRecordIds = fields["Current Course"];
+    // console.log("🎯 Current Course (record IDs):", courseRecordIds);
+    
+    let courseName = null;
+    
+    // If there's a linked course, fetch its name from the Courses table
+    if (courseRecordIds && Array.isArray(courseRecordIds) && courseRecordIds.length > 0) {
+      const courseRecordId = courseRecordIds[0]; // Get the first course
+      // console.log("🔍 Fetching course name for record ID:", courseRecordId);
+      
+      try {
+        const courseResponse = await fetch(
+          `https://api.airtable.com/v0/${AIRTABLE_BASE_ID}/Courses/${courseRecordId}`,
+          {
+            headers: {
+              Authorization: `Bearer ${AIRTABLE_API_KEY}`,
+              Accept: "application/json",
+            },
+          }
+        );
+        
+        if (courseResponse.ok) {
+          const courseData = await courseResponse.json();
+          courseName = courseData.fields?.Name || null;
+          // console.log("✅ Course name:", courseName);
+        } else {
+          console.log("⚠️ Could not fetch course details");
+        }
+      } catch (err) {
+        console.log("⚠️ Error fetching course:", err.message);
+      }
+    }
+    
+    // console.log("📊 % missed FE:", fields["% missed FE"]);
+    // console.log("📊 % missed BE:", fields["% missed BE"]);
+    // console.log("📊 % missed TCF/ITP:", fields["% missed TCF/ITP"]);
+    
+    const profile = {
+      preferredName: fields["Preferred Name"],
+      currentCourse: courseName,
+      percentMissedFE: fields["% missed FE"] || 0,
+      percentMissedBE: fields["% missed BE"] || 0,
+      percentMissedTCF: fields["% missed TCF/ITP"] || 0,
+    };
+    
+    // console.log("✅ Sending profile:", profile);
+    
+    res.json({
+      success: true,
+      profile: profile,
+    });
+  } catch (error) {
+    console.error("❌ Student profile fetch error:", error.message);
+    res.status(500).json({ 
+      error: "Server error fetching student profile",
+      message: error.message 
+    });
+  }
+});
+
 // -------------------------
 // TEACHER ROUTES
 // -------------------------
@@ -331,30 +444,30 @@ app.get("/api/attendance/:preferredName", async (req, res) => {
 // Teacher login - uses MASTER_PORTAL_PW
 app.post("/api/teacher/login", loginLimiter, async (req, res) => {
   try {
-    console.log("🔐 Teacher login attempt");
-    console.log("Request body:", req.body);
-    console.log("MASTER_PORTAL_PW set:", !!MASTER_PORTAL_PW);
-    console.log("MASTER_PORTAL_PW value:", MASTER_PORTAL_PW);
+    // console.log("🔐 Teacher login attempt");
+    // console.log("Request body:", req.body);
+    // console.log("MASTER_PORTAL_PW set:", !!MASTER_PORTAL_PW);
+    // console.log("MASTER_PORTAL_PW value:", MASTER_PORTAL_PW);
     
     const { password } = req.body;
-    console.log("Received password:", password);
+    // console.log("Received password:", password);
     
     if (!password) {
-      console.log("❌ No password provided");
+      // console.log("❌ No password provided");
       return res.status(400).json({ error: "Password is required" });
     }
 
-    console.log("Comparing passwords:");
-    console.log("  Received:", password);
-    console.log("  Expected:", MASTER_PORTAL_PW);
-    console.log("  Match:", password === MASTER_PORTAL_PW);
+    // console.log("Comparing passwords:");
+    // console.log("  Received:", password);
+    // console.log("  Expected:", MASTER_PORTAL_PW);
+    // console.log("  Match:", password === MASTER_PORTAL_PW);
 
     if (!MASTER_PORTAL_PW || password !== MASTER_PORTAL_PW) {
       console.log("❌ Invalid password");
       return res.status(401).json({ error: "Invalid teacher password" });
     }
 
-    console.log("✅ Teacher login successful");
+    // console.log("✅ Teacher login successful");
     res.json({
       success: true,
       userType: "teacher",
@@ -368,7 +481,7 @@ app.post("/api/teacher/login", loginLimiter, async (req, res) => {
 // Get list of unique classes
 app.get("/api/teacher/classes", async (req, res) => {
   try {
-    console.log("📚 Fetching classes from Courses table...");
+    // console.log("📚 Fetching classes from Courses table...");
     
     const BASE_ID = AIRTABLE_BASE_ID;
     const COURSES_TABLE = "Courses";
@@ -507,7 +620,7 @@ app.get("/api/teacher/class/:className", async (req, res) => {
       offset = data.offset;
     } while (offset);
 
-    console.log(`  Total records fetched: ${allRecords.length}`);
+    // console.log(`  Total records fetched: ${allRecords.length}`);
 
     // Filter records where Current Course (from Student) includes our courseRecordId
     // AND the attendance date is on or after the course start date
@@ -581,7 +694,7 @@ app.get("/api/teacher/class/:className", async (req, res) => {
 
     app.listen(PORT, () => {
       console.log(`🚀 Student Portal API running on http://localhost:${PORT}`);
-      console.log(`📊 Connected to Airtable Base: ${AIRTABLE_BASE_ID}`);
+      // console.log(`📊 Connected to Airtable Base: ${AIRTABLE_BASE_ID}`);
       console.log(`🗂️ Attendance Table: ${AIRTABLE_ATTENDANCE_TABLE}`);
     });
   } catch (e) {
