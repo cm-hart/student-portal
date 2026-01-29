@@ -219,7 +219,10 @@ function LoginScreen({ onStudentLogin, onTeacherLogin, loading, error, setError 
           <h1 className="text-3xl font-bold text-gray-800 mb-2">
             Attendance Portal
           </h1>
+          
           <p className="text-gray-600">Sign in to continue</p>
+
+          
         </div>
 
         {/* Login Mode Tabs */}
@@ -330,7 +333,10 @@ function LoginScreen({ onStudentLogin, onTeacherLogin, loading, error, setError 
               {error}
             </div>
           )}
-
+          <div className="text-center">
+            <p className="text-gray-600">For help with a lost password, <br />please reach out to your instructor.</p>
+          </div>
+          
           <button
             onClick={handleSubmit}
             disabled={loading}
@@ -338,6 +344,7 @@ function LoginScreen({ onStudentLogin, onTeacherLogin, loading, error, setError 
           >
             {loading ? "Signing in..." : "Sign In"}
           </button>
+          
         </div>
       </div>
     </div>
