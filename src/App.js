@@ -1,4 +1,6 @@
 import React, { useState } from "react";
+import logo from "./assets/ac-logo.jpg";
+import './App.css'
 import {
   LogOut,
   User,
@@ -208,8 +210,11 @@ function LoginScreen({ onStudentLogin, onTeacherLogin, loading, error, setError 
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
       <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-8">
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-16 h-16 bg-indigo-100 rounded-full mb-4">
+          {/* <div className="inline-flex items-center justify-center w-16 h-16 bg-indigo-100 rounded-full mb-4">
             <User className="w-8 h-8 text-indigo-600" />
+          </div> */}
+          <div className="inline-flex items-center justify-center w-36 h-36 bg-indigo-100 rounded-full mb-4">
+            <img src={logo} alt="Logo" className="w-120 h-36" />
           </div>
           <h1 className="text-3xl font-bold text-gray-800 mb-2">
             Attendance Portal
@@ -294,7 +299,7 @@ function LoginScreen({ onStudentLogin, onTeacherLogin, loading, error, setError 
           ) : (
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Master Password
+                Password
               </label>
               <div className="relative">
                 <input
