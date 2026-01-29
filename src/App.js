@@ -257,7 +257,7 @@ function LoginScreen({ onStudentLogin, onTeacherLogin, loading, error, setError 
             <>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Preferred Name
+                  Name
                 </label>
                 <input
                   type="text"
@@ -494,7 +494,22 @@ function StudentDashboard({ student, records, onLogout, loading }) {
 
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Zone Warning Banner */}
+        {/* Zone Status Banner - Always Visible */}
+        <div
+          className={`mb-6 p-4 rounded-lg border-2 flex items-center justify-center ${
+            zoneStatus.zone === "red"
+              ? "bg-red-100 border-red-400 text-red-900"
+              : zoneStatus.zone === "yellow"
+              ? "bg-yellow-100 border-yellow-400 text-yellow-900"
+              : "bg-green-100 border-green-400 text-green-900"
+          }`}
+        >
+          <p className="text-lg font-bold">
+            You are in the {zoneStatus.zone.toUpperCase()} zone
+          </p>
+        </div>
+
+        {/* Zone Warning Banner - Only for Yellow/Red */}
         {zoneStatus.zone !== "green" && (
           <div
             className={`mb-6 p-4 rounded-lg border-2 flex items-center space-x-3 ${
@@ -551,9 +566,13 @@ function StudentDashboard({ student, records, onLogout, loading }) {
             <h3 className="text-lg font-semibold text-gray-800">
               Attendance Zone Reference
             </h3>
+            <h2 className="text-md text-gray-600 mt-1">
+              <a className="text-blue-600 hover:underline" href="https://docs.google.com/document/d/1Tdj0PFWu98j3JDTBsvHHszxOKGazHUvt0faf2Ftogss/edit?tab=t.0#heading=h.1vg41lkd6ugb">Click here to see the attendance policy and what to do when you miss a class.</a>
+            </h2>
             <p className="text-sm text-gray-600 mt-1">
               Use this chart to understand your current attendance standing.
             </p>
+            
             <p className="text-sm text-gray-600 mt-1">
               You are marked tardy if you arrive between 1 and 19 minutes late.
             </p>
