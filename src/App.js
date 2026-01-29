@@ -219,10 +219,7 @@ function LoginScreen({ onStudentLogin, onTeacherLogin, loading, error, setError 
           <h1 className="text-3xl font-bold text-gray-800 mb-2">
             Attendance Portal
           </h1>
-          
           <p className="text-gray-600">Sign in to continue</p>
-
-          
         </div>
 
         {/* Login Mode Tabs */}
@@ -333,10 +330,7 @@ function LoginScreen({ onStudentLogin, onTeacherLogin, loading, error, setError 
               {error}
             </div>
           )}
-          <div className="text-center">
-            <p className="text-gray-600">For help with a lost password, <br />please reach out to your instructor.</p>
-          </div>
-          
+
           <button
             onClick={handleSubmit}
             disabled={loading}
@@ -344,7 +338,6 @@ function LoginScreen({ onStudentLogin, onTeacherLogin, loading, error, setError 
           >
             {loading ? "Signing in..." : "Sign In"}
           </button>
-          
         </div>
       </div>
     </div>
@@ -573,13 +566,9 @@ function StudentDashboard({ student, records, onLogout, loading }) {
             <h3 className="text-lg font-semibold text-gray-800">
               Attendance Zone Reference
             </h3>
-            <h2 className="text-md text-gray-600 mt-1">
-              <a className="text-blue-600 hover:underline" href="https://docs.google.com/document/d/1Tdj0PFWu98j3JDTBsvHHszxOKGazHUvt0faf2Ftogss/edit?tab=t.0#heading=h.1vg41lkd6ugb">Click here to see the attendance policy and what to do when you miss a class.</a>
-            </h2>
             <p className="text-sm text-gray-600 mt-1">
               Use this chart to understand your current attendance standing.
             </p>
-            
             <p className="text-sm text-gray-600 mt-1">
               You are marked tardy if you arrive between 1 and 19 minutes late.
             </p>
@@ -818,43 +807,86 @@ function TeacherDashboard({ onLogout }) {
                       Tardies
                     </th>
                     <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">
+                      % Missed
+                    </th>
+                    <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">
+                      Zone
+                    </th>
+                    <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">
                       Total Blocks
                     </th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200">
-                  {students.map((student, idx) => (
-                    <tr key={idx} className="hover:bg-gray-50">
-                      <td className="px-6 py-4 text-sm text-gray-900">
-                        {student.preferredName}
-                      </td>
-                      <td className="px-6 py-4">
-                        <span
-                          className={`inline-flex px-3 py-1 rounded-full text-sm font-semibold ${
-                            student.absences > 0
-                              ? "bg-red-200 text-red-900"
-                              : "bg-green-100 text-green-800"
-                          }`}
-                        >
-                          {student.absences}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4">
-                        <span
-                          className={`inline-flex px-3 py-1 rounded-full text-sm font-semibold ${
-                            student.tardies > 0
-                              ? "bg-yellow-200 text-yellow-900"
-                              : "bg-green-100 text-green-800"
-                          }`}
-                        >
-                          {student.tardies}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 text-sm text-gray-600">
-                        {student.totalBlocks}
-                      </td>
-                    </tr>
-                  ))}
+                  {students.map((student, idx) => {
+                    // Determine zone based on absences
+                    const getZone = (absences) => {
+                      if (absences >= 23) return { zone: "red", label: "Red" };
+                      if (absences >= 12) return { zone: "yellow", label: "Yellow" };
+                      return { zone: "green", label: "Green" };
+                    };
+                    
+                    const zoneInfo = getZone(student.absences);
+                    
+                    return (
+                      <tr key={idx} className="hover:bg-gray-50">
+                        <td className="px-6 py-4 text-sm text-gray-900">
+                          {student.preferredName}
+                        </td>
+                        <td className="px-6 py-4">
+                          <span
+                            className={`inline-flex px-3 py-1 rounded-full text-sm font-semibold ${
+                              student.absences > 0
+                                ? "bg-red-200 text-red-900"
+                                : "bg-green-100 text-green-800"
+                            }`}
+                          >
+                            {student.absences}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4">
+                          <span
+                            className={`inline-flex px-3 py-1 rounded-full text-sm font-semibold ${
+                              student.tardies > 0
+                                ? "bg-yellow-200 text-yellow-900"
+                                : "bg-green-100 text-green-800"
+                            }`}
+                          >
+                            {student.tardies}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4">
+                          <span
+                            className={`inline-flex px-3 py-1 rounded-full text-sm font-semibold ${
+                              student.percentMissed > 7
+                                ? "bg-red-200 text-red-900"
+                                : student.percentMissed > 4
+                                ? "bg-yellow-200 text-yellow-900"
+                                : "bg-green-100 text-green-800"
+                            }`}
+                          >
+                            {student.percentMissed ? `${Math.round(student.percentMissed)}%` : "N/A"}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4">
+                          <span
+                            className={`inline-flex px-3 py-1 rounded-full text-sm font-semibold ${
+                              zoneInfo.zone === "red"
+                                ? "bg-red-200 text-red-900"
+                                : zoneInfo.zone === "yellow"
+                                ? "bg-yellow-200 text-yellow-900"
+                                : "bg-green-100 text-green-800"
+                            }`}
+                          >
+                            {zoneInfo.label}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 text-sm text-gray-600">
+                          {student.totalBlocks}
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>

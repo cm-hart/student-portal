@@ -673,9 +673,60 @@ app.get("/api/teacher/class/:className", async (req, res) => {
       });
     });
 
-    const students = Object.values(studentMap)
-      .filter(s => s && s.preferredName && typeof s.preferredName === 'string')
-      .sort((a, b) => a.preferredName.localeCompare(b.preferredName));
+    // Fetch % missed data from Students table for each student
+    const studentsWithPercent = await Promise.all(
+      Object.values(studentMap)
+        .filter(s => s && s.preferredName && typeof s.preferredName === 'string')
+        .map(async (student) => {
+          try {
+            const safeName = student.preferredName.replace(/'/g, "\\'");
+            const studentParams = new URLSearchParams();
+            studentParams.set("filterByFormula", `{Preferred Name}='${safeName}'`);
+
+            const studentResponse = await fetch(
+              `https://api.airtable.com/v0/${BASE_ID}/Students?${studentParams.toString()}`,
+              {
+                headers: {
+                  Authorization: `Bearer ${AIRTABLE_API_KEY}`,
+                  Accept: "application/json",
+                },
+              }
+            );
+
+            if (studentResponse.ok) {
+              const studentData = await studentResponse.json();
+              if (studentData.records && studentData.records.length > 0) {
+                const fields = studentData.records[0].fields;
+                
+                // Determine which % to use based on the course name
+                let percentMissed = 0;
+                if (className.includes("Frontend") || className.includes("FE")) {
+                  percentMissed = fields["% missed FE"] || 0;
+                } else if (className.includes("Backend") || className.includes("BE")) {
+                  percentMissed = fields["% missed BE"] || 0;
+                } else if (className.includes("TCF") || className.includes("ITP")) {
+                  percentMissed = fields["% missed TCF/ITP"] || 0;
+                }
+
+                return {
+                  ...student,
+                  percentMissed,
+                };
+              }
+            }
+            
+            // If fetch fails, return student without percentMissed
+            return { ...student, percentMissed: null };
+          } catch (err) {
+            console.error(`Error fetching % missed for ${student.preferredName}:`, err);
+            return { ...student, percentMissed: null };
+          }
+        })
+    );
+
+    const students = studentsWithPercent.sort((a, b) => 
+      a.preferredName.localeCompare(b.preferredName)
+    );
 
     res.json({ success: true, students });
   } catch (error) {
