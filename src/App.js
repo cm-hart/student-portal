@@ -243,7 +243,7 @@ function LoginScreen({ onStudentLogin, onTeacherLogin, loading, error, setError 
                 : "text-gray-600 hover:text-gray-800"
             }`}
           >
-            Teacher
+            Instructor
           </button>
         </div>
 
@@ -702,7 +702,7 @@ function TeacherDashboard({ onLogout }) {
           <div className="flex items-center justify-between">
             <div>
               <h1 className="text-2xl font-bold text-gray-800">
-                Teacher Attendance Report
+                Instructor Attendance Report
               </h1>
               <p className="text-sm text-gray-600 mt-1">
                 View attendance summary for your classes
