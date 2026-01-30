@@ -567,6 +567,9 @@ function StudentDashboard({ student, records, onLogout, loading }) {
               Attendance Zone Reference
             </h3>
             <p className="text-sm text-gray-600 mt-1">
+              <a className="text-blue-600 hover:underline" href="https://docs.google.com/document/d/1Tdj0PFWu98j3JDTBsvHHszxOKGazHUvt0faf2Ftogss/edit?tab=t.0#heading=h.1vg41lkd6ugb">Click here to view the full Attendance Policy.</a>
+            </p>
+            <p className="text-sm text-gray-600 mt-1">
               Use this chart to understand your current attendance standing.
             </p>
             <p className="text-sm text-gray-600 mt-1">
